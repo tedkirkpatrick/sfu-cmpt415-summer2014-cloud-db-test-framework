@@ -1,0 +1,105 @@
+These are the support libraries for doing cloud database testing on
+the cloudbig/cloudsmall network.
+
+Note that this test framework is designed around exploration and as 
+such the tests tend to spew quite a lot of information. It is not
+intended at this point to be used as a form of pass/fail black box
+test for any of these systems. In particular, the behaviour of each
+server under network partitioning can be highly dependent on how each
+system is configured, the data being stored and how the partitioning 
+is done. The latency tests are much more parsimonious (provided debug
+is turned off) but can take a while to output results.
+
+Note that none of these test frameworks controls turning on or off
+the servers. See the bin/ directory for scripts that do this.
+
+Some of the test modules for specific servers need to have external
+storage set up. Voldemort is entirely set up via configuration files.
+Cassandra on the external hosts is much too slow for building up or
+tearing down keyspaces and tables so this code is all commented out 
+for now. It does work for the locally hosted jepsen tests.
+
+To use jepsen or speed make sure PYTHONPATH points to their location.
+
+JEPSEN NETWORK PARTIONING TEST FRAMEWORK:
+
+jepsen.py* - test framework controller module.
+
+SYNOPSIS:
+
+import jepsen
+
+# will run test "basic" using "jepsen_cassandra.py"
+# will print log at end of test
+
+j = Jepsen("cassandra","basic",{'excludeall': True, 'count': 100, 'wait': 20})
+
+# excludeall: partition each lxc host from all other hosts
+# count: number of iterations to run per host
+# wait: time in milliseconds to wait between test iterations
+# note that jepsen will find all the live lxc containers automatically
+# it assumes that all are going to be used for testing purposes
+# assumes that the operator has passwordless ssh access to all lxc hosts
+
+# to run all tests for a server
+j = Jepsen("cassandra")
+j.start_all()
+
+
+JEPSEN TEST LIBRARIES:
+
+Each of the following defines tests for that platform.
+For this framework the tests are different for each server.
+To get an idea of which tests can be run look in each jepsen_* 
+module file. The "tests" list is used by jepsen.py to determine
+which tests can be run.
+
+jepsen_cassandra.py - most complex set of tests.
+jepsen_mongo.py - can only really write to one server.
+jepsen_riak.py - python api is *very* different from clojure api.
+                 This may not be a fair comparison.
+jepsen_voldemort.py - no jepsen clojure test available.
+
+
+YCSB LATENCY TESTING FRAMEWORK:
+
+speed.py* - implements all of the common YCSB workloads
+            (see the Workload class for descriptions)
+
+SYNOPSIS:
+
+import speed
+s = Speed("cassandra")
+
+# for more verbose output 
+# speed.debug = True
+
+s.start_all()
+
+# to run one test
+# in this case the YCSB 50/50 workload A
+
+s = Speed("cassandra","A")
+
+SPEED TEST LIBRARIES:
+
+Each of the following defines a "setup", "cleanup", "read", "write"
+function. The "read" function should be able to take either a key
+or range (numeric start, finish) in a dictionary.
+
+speed_cassandra.py - code to create keyspace/table commented out
+speed_hbase.py
+speed_mongo.py
+speed_mysql.py - mysql is only live on cloudsmall1, used as benchmark.
+                 If you can beat this you are very fast.
+speed_riak.py
+speed_voldemort.py - voldemort is configured externally
+
+MISC SHARED LIBRARIES:
+
+startfuncs.sh - used by some of the web scripts to produce pages.
+results.py - logging module mainly used for jepsen but basis for
+             speed.py's WorkloadResults class.
+iptables.py - module to handle network partitioning for jepsen.
+
+* can be run as a stand alone script

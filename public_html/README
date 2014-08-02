@@ -1,0 +1,24 @@
+Some basic scripts to manage jepsen tests via the web.
+Generally its a good idea to do this via the CLI on cloudbig
+but for experimentation these are available.
+
+JEPSEN TEST FRAMEWORK SCRIPTS:
+
+These scripts are wrappers for the shell scripts in
+bin/ which do all the hard work.
+
+clear-testing.cgi - clears the results/TESTING lock file.
+start-server.cgi - use this script first to start a server
+                   needs a test={cassandra|mongo|riak|voldemort}
+                   parameter.
+start-test.cgi - runs a full group of tests for the given server
+                 named in the test= parameter
+status.cgi - AJAX script to get the ps -ef output
+
+OTHER FILES:
+
+index.php - script with links to start-server.cgi invocations.
+            Use this as a first step to initiating a test.
+results - viewable directory with result logs from various tests.
+          Also has all the logs for the speed tests that cannot 
+          be run from this interface.

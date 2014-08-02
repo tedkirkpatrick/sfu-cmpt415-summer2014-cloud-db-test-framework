@@ -1,0 +1,38 @@
+These scripts are used to start/stop cloud database servers, run tests and 
+possibly other things. Generally they are safe to run without arguments
+except for the run*.sh scripts which run ssh on each cloudsmall server
+in turn.
+
+The scripts manage two different networks: a local lxc container network
+and a network of smaller servers all with names like cloudsmall1 (up to 5).
+For the lxc containers the servers are: cassandra, riak, mongo & voldemort.
+For the cloudsmalls: cassandra, riak, mongo, voldemort, hbase & mysql.
+Mysql is only running on cloudsmall1 for comparison.
+
+SCRIPTS TO MANAGE PROCESSES ON THE CLOUDSMALL* SERVERS:
+
+startcs.sh - start a cloud database on all cloudsmall servers
+stopcs.sh - stop a cloud db on all cloudsmall servers
+runcs.sh - run an ssh process on every cloudsmall server in turn
+speed_all.sh - run the lib/speed.py test for a specific server
+               this script will take care of starting and stopping
+               the servers.
+               By default runs all tests for 10 iterations with all servers.
+               Usage: speed_all.sh [iterations] [servers] [sleep time]
+
+SCRIPTS TO MANAGE PROCESSES ON THE LXC CONTAINERS:
+
+startlxc.sh - (run via sudo) start a server 
+runlxc.sh - (run via sudo) like runcs.sh run a process on all containers
+startjepsen.py - start jepsen tests for a given server. Unlike speed_all.sh,
+                 the server must be started with startlxc.sh before the script
+                 can be run.
+                 Usage: startjepsen.py {server} [test] ['excludeall']
+                 (the behaviour of 'excludeall' is to fully partition each lxc
+                  container from the rest of the network)
+
+MISC:
+
+test - some python cloud db test scripts
+parse_speed.pl - used with the output of lib/speed.py to generate spreadsheet data
+partition.sh - (not used) iptables script to partition lxc containers
