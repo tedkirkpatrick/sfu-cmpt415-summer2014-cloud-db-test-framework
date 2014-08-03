@@ -1,6 +1,7 @@
 import subprocess
 import string
 import time
+import nanotime
 from multiprocessing import Lock
 
 class Iptables:
@@ -52,7 +53,7 @@ class Iptables:
 		"""
 		cleanup rules - note this will delete ALL iptables rules on that host
 		"""
-		print "healing "+self.tgt
+		print str(nanotime.now())+" healing "+self.tgt
 		subprocess.check_call([self.ssh, self.tgt, "sudo iptables --flush"])
 		self.blocked = False
 
@@ -157,7 +158,7 @@ class Iptables:
 			if Iptables.allblocked: 
 				Iptables.lock.acquire()
 				for host in hosts:
-					print "healing "+host
+					print str(nanotime.now())+" healing "+host
 					subprocess.check_call([ssh, user+'@'+host, "sudo iptables --flush"])
 				Iptables.allblocked = False
 				Iptables.healed = True

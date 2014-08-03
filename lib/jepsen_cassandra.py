@@ -5,6 +5,7 @@ from cassandra.query import SimpleStatement
 import time
 import nanotime
 import random
+import string
 # jepsen specific modules
 import iptables
 import results
@@ -109,14 +110,21 @@ def prep_session(jep, canonical, createtb=None, createks=None):
 # look for the jep.history.set_checker() to see which is used by which test
 def samestuff(event):
 	f = event.found[0]
-	if event.value != f.stuff:
-		event.resultmsg =  "event "+str(event.idx)+" failed."
+	if event.found == None:
+		event.resultmsg = "event "+str(event.idx)+" empty."
+		event.result = False
+	elif event.value != f.stuff:
+		event.resultmsg =  "event "+str(event.idx)+" different."
 		event.result = False
 	else:
 		event.resultmsg = "event "+str(event.idx)+" ok."
 		event.result = True
 
 def isonemore(event):
+	if event.found == None:
+		event.resultmsg = "event "+str(event.idx)+" empty."
+		event.result = False
+		return
 	f = event.found[0]
 	v = event.value[0]
 	if int(v.k)+1 != int(f.k):
@@ -135,24 +143,32 @@ def isempty(event):
 		event.result = True
 
 def same(event):
-	if event.found == event.value:
+	if event.found == None:
+		event.resultmsg = "event "+str(event.idx)+" empty."
+		event.result = False
+	elif event.found == event.value:
 		event.resultmsg = "event "+str(event.idx)+" ok."
 		event.result = True
 	else:
-		event.resultmsg = "event "+str(event.idx)+" failed."
+		event.resultmsg = "event "+str(event.idx)+" different."
 		event.result = False
 
 def sequence(event):
-	event.resultmsg = "event "+str(event.idx)+" ok."
-	event.result = True
+	if event.found == None:
+		event.resultmsg = "event "+str(event.idx)+" empty."
+		event.result = False
+		return
 
-	seq = [i for i in string.split(event.found, " ")]
+	seq = [i for i in string.split(event.found[0].stuff, " ")]
 	
 	for i, v in enumerate(seq[1:]):
 		if i != int(v):
-			event.resultmsg = "event "+str(event.idx)+" failed."
+			event.resultmsg = "event "+str(event.idx)+" out of order at "+str(i)
 			event.result = False
-			
+			return
+
+	event.resultmsg = "event "+str(event.idx)+" ok."
+	event.result = True
 	
 # the actual tests
 def basic(jep): 
@@ -198,7 +214,7 @@ def basic(jep):
 			history.update(idx, {'found': rows, 'rawtime': nanotime.now()})
 			history.printEvt(idx)
 		except Exception as e:
-			print jep.host+": "+str(e)
+			print jep.host+" "+str(nanotime.now())+": "+str(e)
 		jep.pause()
 
 def counter(jep):
@@ -235,7 +251,7 @@ def counter(jep):
 			jep.history.update(idx, {'found': rows, 'rawtime': nanotime.now()})
 			jep.history.printEvt(idx)
 		except Exception as e:
-			print jep.host+": "+str(e)
+			print jep.host+" "+str(nanotime.now())+": "+str(e)
 		jep.pause()
 		i = i + 1
 	
@@ -276,7 +292,7 @@ def set(jep):
 			jep.history.printEvt(idx)
 			
 		except Exception as e:
-			print jep.host+": "+str(e)
+			print jep.host+" "+str(nanotime.now())+": "+str(e)
 		jep.pause()
 		i = i + 1
 
@@ -342,7 +358,7 @@ def isolation(jep):
 			jep.history.printEvt(idx)
 			
 		except Exception as e:
-			print jep.host+": "+"ERROR: "+str(e)
+			print jep.host+" "+str(nanotime.now())+": "+"ERROR: "+str(e)
 		jep.pause()
 		i = i + 1
 
@@ -383,7 +399,7 @@ def transaction(jep):
 				try:
 					row = session.execute(sel)[0]
 					updstr = "UPDATE %s SET stuff='%s' WHERE id=0 IF stuff='%s'" % (canonical,value,row.stuff)
-					print jep.host+": "+updstr
+					print jep.host+" "+str(nanotime.now())+": "+updstr
 					upd = SimpleStatement(updstr, consistency_level=ConsistencyLevel.QUORUM)
 					res = session.execute(upd)
 					break
@@ -396,7 +412,7 @@ def transaction(jep):
 			history.update(idx, {'found': rows, 'rawtime': nanotime.now()})
 			history.printEvt(idx)
 		except Exception as e:
-			print jep.host+": "+str(e)
+			print jep.host+" "+str(nanotime.now())+": "+str(e)
 		jep.pause()
 		i = i + 1
 
@@ -455,7 +471,7 @@ def transaction_dup(jep):
 			history.printEvt(idx)
 
 		except Exception as e:
-			print jep.host+": "+str(e)
+			print jep.host+" "+str(nanotime.now())+": "+str(e)
 		jep.pause()
 		i = i + 1
 
