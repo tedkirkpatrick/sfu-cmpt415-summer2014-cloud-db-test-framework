@@ -4,13 +4,15 @@ export CASS=/srv/cal/src/apache-cassandra-2.0.7;
 export VD=/srv/cal/src/voldemort-0.96
 export MD=/srv/cal/src/mongodb
 
+ssh='sudo ssh'
+
 function restartlxc() {
 	for i in `seq 5`; do 
 		echo "n$i"
 		echo "stop lxc"
-		lxc-stop -n n$i
+		sudo lxc-stop -n n$i
 		echo "start lxc"
-		lxc-start -n n$i -d
+		sudo lxc-start -n n$i -d
 	done
 	echo sleeping
 	sleep 10
@@ -23,7 +25,7 @@ case "$1" in
 		restartlxc
 		for i in `seq 5`; do 
 			echo "starting $1 on n$i"
-			ssh n$i "export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-amd64; cd $CASS && bin/cassandra >> logs/n$i/system.log 2>&1"
+			$ssh n$i "export JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-amd64; cd $CASS && bin/cassandra >> logs/n$i/system.log 2>&1"
 		done
 	;;
 
@@ -32,7 +34,7 @@ case "$1" in
 		restartlxc
 		for i in `seq 5`; do 
 			echo "starting $1 on n$i"
-			ssh n$i "$MD/bin/mongod -f $MD/config/n$i.conf --fork"
+			$ssh n$i "$MD/bin/mongod -f $MD/config/n$i.conf --fork"
 		done
 	;;
 
@@ -43,7 +45,7 @@ case "$1" in
 			echo "starting $1 on n$i"
 			export RIAKD=/srv/cal/src/riak-lxc/rel/n$i; 
 			export RIAK=$RIAKD/bin/riak; 
-			ssh n$i "ulimit -n 65536 ; $RIAK start"; 
+			$ssh n$i "ulimit -n 65536 ; $RIAK start"; 
 		done
 	;;
 
@@ -52,7 +54,7 @@ case "$1" in
 		restartlxc
 		for i in `seq 5`; do 
 			echo "starting $1 on n$i"
-			ssh n$i "cd $VD; bin/voldemort-server.sh config/n$i > config/n$i/logs/voldemort.log &"
+			$ssh n$i "cd $VD; bin/voldemort-server.sh config/n$i > config/n$i/logs/voldemort.log &"
 		done
 	;;
 

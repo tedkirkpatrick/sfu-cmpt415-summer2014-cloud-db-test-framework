@@ -14,11 +14,8 @@ testprops = {
 }
 
 initwait = 10
-bucket = None
-client = None
 # keys actually have to be strings
 _id = "jepsen"
-key = None
 
 def resolver(fetched):
 	# this doesn't seem to return a single value:
@@ -34,7 +31,7 @@ def setup(jep):
 	pass
 
 def prep_conn(jep):
-	global testprops, bucket, client, key, _id, initwait
+	global testprops
 	if 'port' in jep.props:
 		port = jep.props['port']
 	else: 
@@ -60,6 +57,7 @@ def prep_conn(jep):
 	key.store()
 	# print "waiting "+str(initwait)+"s "
 	# time.sleep(initwait)
+	return bucket
 
 def cleanup(jep):
 	pass
@@ -88,8 +86,8 @@ def basic(jep):
 	allow_mult: keep multiple values of things and use vector clock or some other way to select value
 	"""
 	print "running riak test for host "+jep.host
-	global _id, bucket
-	prep_conn(jep)
+	global _id
+	bucket = prep_conn(jep)
 	fetched = bucket.get(_id)
 	ipt = iptables.Iptables(jep.host, jep)
 	jep.history.set_checker(getattr(jep.mod, 'same'))

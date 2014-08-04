@@ -22,14 +22,19 @@ speed_all.sh - run the lib/speed.py test for a specific server
 
 SCRIPTS TO MANAGE PROCESSES ON THE LXC CONTAINERS:
 
-startlxc.sh - (run via sudo) start a server 
-runlxc.sh - (run via sudo) like runcs.sh run a process on all containers
+startlxc.sh - (runs via sudo) start a server 
+runlxc.sh - (runs via sudo) like runcs.sh run a process on all containers
 startjepsen.py - start jepsen tests for a given server. Unlike speed_all.sh,
                  the server must be started with startlxc.sh before the script
                  can be run.
                  Usage: startjepsen.py {server} [test] ['excludeall']
                  (the behaviour of 'excludeall' is to fully partition each lxc
                   container from the rest of the network)
+
+                 to stop the jepsen server:
+                 Ctrl-Z
+                 killall python
+                 fg
 
 MISC:
 

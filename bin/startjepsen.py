@@ -17,7 +17,7 @@ if re.match("cassandra|riak|mongo|voldemort", sys.argv[1]):
 	if len(sys.argv) >= 4:
 		if sys.argv[3] == 'excludeall':
 			excludeall = True
-	j = Jepsen(sys.argv[1],test,{'excludeall':excludeall})
+	j = Jepsen(sys.argv[1],test,{'excludeall':excludeall,'wait': 1000,'count': 120})
 	if test == None:
 		j.start_all()
 else:

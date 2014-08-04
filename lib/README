@@ -45,6 +45,15 @@ j = Jepsen("cassandra","basic",{'excludeall': True, 'count': 100, 'wait': 20})
 j = Jepsen("cassandra")
 j.start_all()
 
+STOPPING JEPSEN:
+
+To stop the jepsen server:
+
+bash> Ctrl-Z
+bash> killall python
+bash> fg
+
+Ctrl-c won't work for this multithreaded system.
 
 JEPSEN TEST LIBRARIES:
 

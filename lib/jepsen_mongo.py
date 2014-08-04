@@ -18,10 +18,16 @@ def prep_session(jep, writeconcern=None):
 		port = jep.props['port']
 	else: 
 		port = 27017
+
+	# try sending all traffic to the same host
+	# the only host that actually accepts writes is assumed to be the first 
+	# host = jep.host
+	host = jep.hosts[0]
+
 	if writeconcern != None:
-		client = MongoClient(host=jep.host, port=port, **writeconcern)
+		client = MongoClient(host=host, port=port, **writeconcern)
 	else:
-		client = MongoClient(jep.host, port)
+		client = MongoClient(host, port)
 	db = client.jepsen
 	session = db.jepsen
 	return session
@@ -47,14 +53,17 @@ def same(event):
 	if event.found == None:
 		event.resultmsg = "event ("+str(event.idx)+") empty."
 		event.result = True
-	elif event.value == event.found:
+	else:
+		for (k,v) in event.value.items():
+			if k == 'date': continue
+			if k not in event.found or v != event.found[k]:
+				event.resultmsg = "event ("+str(event.idx)+") different at "+str(k)
+				event.result = False
+				return
 		event.resultmsg = "event ("+str(event.idx)+") same."
 		event.result = True
-	else:
-		event.resultmsg = "event ("+str(event.idx)+") different."
-		event.result = False
 
-def basic(jep, writeconcern={'slaveOk':True}):
+def basic(jep, writeconcern={'slaveOk': False}):
 	"""
 	just add a record to our db
 	"""
@@ -89,8 +98,8 @@ def basic(jep, writeconcern={'slaveOk':True}):
 		jep.pause()
 
 def journal(jep):
-	basic(jep, {'w': 5, 'wtimeout': 100, 'j': True, 'slaveOk': True}) 
+	basic(jep, {'w': 5, 'wtimeout': 100, 'j': True, 'slaveOk': False}) 
 
 def fsync(jep):
-	basic(jep, {'w': 5, 'wtimeout': 100, 'fsync': True, 'slaveOk': True})
+	basic(jep, {'w': 5, 'wtimeout': 100, 'fsync': True, 'slaveOk': False})
 

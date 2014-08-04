@@ -103,11 +103,11 @@ class Iptables:
 		want proportion of test to be blocked to be about 1/3?
 		"""
 		pos = float(i)/float(count)
-		if pos > wait and pos < 2.0*wait:
+		if pos > wait and pos < 1.0-wait:
 			if not self.blocked: 
 				self.block(self.exclude)
 
-		elif pos >= 2.0*wait:
+		elif pos >= 1.0-wait:
 			if self.blocked: 
 				self.flush()
 
@@ -133,7 +133,7 @@ class Iptables:
 		ssh = jep.props['ssh']
 		user = jep.props['user']
 		pos = float(i)/float(count)
-		if pos > wait and pos < 2.0*wait:
+		if pos > wait and pos < 1.0-wait:
 			if not Iptables.healed and not Iptables.allblocked: 
 				Iptables.lock.acquire()
 				Iptables.allblocked = True
@@ -154,7 +154,7 @@ class Iptables:
 					print host+"\n"+Iptables.listOne(ssh, user+'@'+host)
 				Iptables.lock.release()
 
-		elif pos >= 2.0*wait:
+		elif pos >= 1.0-wait:
 			if Iptables.allblocked: 
 				Iptables.lock.acquire()
 				for host in hosts:
@@ -175,11 +175,11 @@ class Iptables:
 		elapsed = time.time() - start
 		pos = elapsed/maxtime
 		print str(elapsed)+"/"+str(maxtime)+" = "+str(pos)+" between "+str(wait)+" and "+str(2.0*wait)+" ? "
-		if pos > wait and pos < 2.0*wait:
+		if pos > wait and pos < 1.0-wait:
 			if not self.blocked: 
 				self.block(self.exclude)
 
-		elif pos >= 2.0*wait:
+		elif pos >= 1.0-wait:
 			if self.blocked: 
 				self.flush()
 
