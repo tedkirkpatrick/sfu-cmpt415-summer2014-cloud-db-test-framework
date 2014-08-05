@@ -12,7 +12,6 @@ import results
 
 keyspace = 'jepsen'
 initsleep = 5
-session = None
 
 # used by Jepsen to validate tests that can be run
 # these vary depending on the storage technology
@@ -55,7 +54,7 @@ def prep_session(jep, canonical, createtb=None, createks=None):
 	doing this here as it may be the case that we don't need / want a setup step 
 	for some test suites
 	"""
-	global initsleep, keyspace, session
+	global initsleep, keyspace
 
 	if 'port' in jep.props:
 		cluster = Cluster([jep.host+':'+str(jep.props['port'])])

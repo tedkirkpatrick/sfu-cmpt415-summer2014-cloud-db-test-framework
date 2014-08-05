@@ -6,8 +6,6 @@ import iptables
 import results
 
 tests = [ "basic", "journal", "fsync" ]
-session = None
-db = None
 
 def setup(jep):
 	pass
