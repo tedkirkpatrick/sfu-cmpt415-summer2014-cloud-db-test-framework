@@ -43,11 +43,21 @@ class Jepsen:
 	# opaque data to send to test suite
 	props = {}
 	def_props = {'count': 40, 'wait': 500, 'user': 'root', 'ssh': 'ssh', 'destroy': True}
+	threads = None
+	hostprefix = 'n'
 
-	def __init__(self, lib=None, test=None, props=None):
+	def __init__(self, lib=None, test=None, props=None, threads=None, hostprefix='n'):
 		"""
 		set up and possibly run a test
+		lib is the jepsen_*.py library to invoke
+		test is optionally which of the tests to run
+		threads and hostprefix are for situations where 
+			the number of threads or hosts is not based 
+			on the lxc hosts running on the system
+			e.g. the amazon tests
 		"""
+		self.threads = threads
+		self.hostprefix = hostprefix
 		if isinstance(props, dict): 
 			# order matters here: last one takes precedence on key conflict
 			self.props = dict(self.def_props.items() + props.items())
@@ -132,14 +142,17 @@ class Jepsen:
 		we assume all of them are going to be used in tests
 		this function requires sudo access to work
 		"""
-		hosts = subprocess.check_output(["sudo","lxc-ls"]).split()
-		print "hosts: "+str(hosts)
-		self.hosts = hosts
-		self._split_hosts_()
-		ipt = iptables.Iptables(None, self)
-		print "flushing iptables rules"
-		print ipt.flushAll()
-		print ipt.listAll()
+		if self.threads != None and self.threads > 0:
+			self.hosts = [ self.hostprefix+str(i) for i in range(self.threads) ]
+			print "threads: "+str(self.hosts)
+		else:
+			self.hosts = subprocess.check_output(["sudo","lxc-ls"]).split()
+			print "hosts: "+str(self.hosts)
+			self._split_hosts_()
+			ipt = iptables.Iptables(None, self)
+			print "flushing iptables rules"
+			print ipt.flushAll()
+			print ipt.listAll()
 
 	def _split_hosts_(self):
 		self.first_group = []

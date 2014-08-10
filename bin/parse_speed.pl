@@ -1,28 +1,49 @@
 #!/usr/bin/perl
-# parse the output of lib/speed.py
+# parse the output of lib/speed.py and lib/jepsen.py for latency information
 use JSON qw/encode_json decode_json/;
 use Data::Dumper;
 $Data::Dumper::Indent = 1;
 use strict;
 
-my ($lib, $test, $oldtest, $data);
+my ($lib, $test, $oldtest, $data, %seen);
 
-while (my $_ = <>) {
+while (<>) {
 	chomp;
-	if (/^running (\w+) (\w)/) {
+	if (/^running (\w+) (\w+)/) {
 		($lib, $test) = ($1,$2);
-		my $stats = <>;
-		chomp $stats;
-		my $histograms = <>;
-		chomp $histograms;
-		$stats =~ s/'/"/g;
-		$histograms =~ s/'/"/g;
-		$stats =~ s/(\d+):/"$1":/g;
-		$histograms =~ s/(\d+):/"$1":/g;
-		# print "lib $lib\ntest $test\nstats $stats\nhistograms $histograms\n";
-		$data->{stats}{$test}{$lib} = decode_json($stats);
-		$data->{histograms}{$test}{$lib} = decode_json($histograms);
+		my $testtest = "$test $ARGV";
+		my $count;
+		while ($seen{$lib}{$testtest}) {
+			$testtest = "$test $ARGV $count";
+			$count++;
+		}
+		$test = $testtest;
+		$seen{$lib}{$test} = 1;
+		my ($decoded_stats, $decoded_histograms);
+		do {
+			my ($stats, $histograms) = &getlines();
+			# just ignore lines in the file that aren't json
+			eval {
+				$decoded_stats = decode_json($stats);
+				$decoded_histograms = decode_json($histograms);
+				# print "lib $lib\ntest $test\nstats $stats\nhistograms $histograms\n";
+			}
+		} while $@;
+		$data->{stats}{$test}{$lib} = $decoded_stats;
+		$data->{histograms}{$test}{$lib} = $decoded_histograms;
 	} 
+}
+
+sub getlines {
+	my $stats = <>;
+	my $histograms = <>;
+	chomp $stats;
+	chomp $histograms;
+	$stats =~ s/'/"/g;
+	$histograms =~ s/'/"/g;
+	$stats =~ s/(\d+):/"$1":/g;
+	$histograms =~ s/(\d+):/"$1":/g;
+	($stats, $histograms);
 }
 
 print "stats\n";
@@ -45,7 +66,8 @@ foreach my $test (sort keys %{$data->{histograms}}) {
 	foreach my $lib (keys %{$tdata}) {
 		foreach my $op (qw/reads writes/) {
 			my $hgrams = $tdata->{$lib}{$op};
-			if (scalar keys %$hgrams > $max) { $max = scalar keys %$hgrams; }
+			my $maxkey = (sort keys %$hgrams)[-1];
+			if ($maxkey > $max) { $max = $maxkey; }
 		}
 	}
 	print "db,operation,",(join ',', map { $_.' ms' } (0..$max)),"\n";
