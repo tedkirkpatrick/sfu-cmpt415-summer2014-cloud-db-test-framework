@@ -72,7 +72,7 @@ def prep_session(jep, canonical, createtb=None, createks=None):
 	session.execute(createks)
 	# make sure keyspace exists on this host
 	tries = 0
-	while tries < 10:
+	while tries < 100:
 		time.sleep(initsleep)
 		rows = session.execute("SELECT keyspace_name FROM system.schema_keyspaces")
 		for row in rows:
@@ -94,7 +94,7 @@ def prep_session(jep, canonical, createtb=None, createks=None):
 
 	# make sure table exists on this host
 	tries = 0
-	while tries < 10:
+	while tries < 100:
 		time.sleep(initsleep)
 		rows = session.execute("SELECT keyspace_name,columnfamily_name FROM system.schema_columnfamilies")
 		for row in rows:
@@ -108,11 +108,10 @@ def prep_session(jep, canonical, createtb=None, createks=None):
 # these are checkers for history records
 # look for the jep.history.set_checker() to see which is used by which test
 def samestuff(event):
-	f = event.found[0]
 	if event.found == None:
 		event.resultmsg = "event "+str(event.idx)+" empty."
 		event.result = False
-	elif event.value != f.stuff:
+	elif event.value != event.found[0].stuff:
 		event.resultmsg =  "event "+str(event.idx)+" different."
 		event.result = False
 	else:
