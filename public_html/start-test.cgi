@@ -10,11 +10,6 @@ else
 	status=`ps -ef | grep $arg`
 	outfile=results/$arg-test-$ts.txt
 	touch results/TESTING
-	(sudo /srv/cal/bin/startjepsen.py $arg; echo FINISHED) > $outfile 2>&1 &
+	(sudo /srv/cal/bin/startjepsen.py $arg all excludeall; echo FINISHED; rm results/TESTING) > $outfile 2>&1 &
 fi
-title=Results
-heading="Testing $arg"
-. ../lib/startfuncs.sh
-
-htmlpage
-
+echo $outfile
