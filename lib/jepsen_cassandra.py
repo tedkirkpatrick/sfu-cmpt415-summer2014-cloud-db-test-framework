@@ -11,7 +11,7 @@ import iptables
 import results
 
 keyspace = 'jepsen'
-initsleep = 5
+initsleep = 2
 
 # used by Jepsen to validate tests that can be run
 # these vary depending on the storage technology

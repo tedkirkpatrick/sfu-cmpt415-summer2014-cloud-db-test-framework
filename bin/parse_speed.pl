@@ -66,7 +66,7 @@ foreach my $test (sort keys %{$data->{histograms}}) {
 	foreach my $lib (keys %{$tdata}) {
 		foreach my $op (qw/reads writes/) {
 			my $hgrams = $tdata->{$lib}{$op};
-			my $maxkey = (sort keys %$hgrams)[-1];
+			my $maxkey = (sort { $a <=> $b } keys %$hgrams)[-1];
 			if ($maxkey > $max) { $max = $maxkey; }
 		}
 	}
