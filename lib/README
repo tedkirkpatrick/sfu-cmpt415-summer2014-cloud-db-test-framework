@@ -68,6 +68,14 @@ jepsen_mongo.py - can only really write to one server.
 jepsen_riak.py - python api is *very* different from clojure api.
                  This may not be a fair comparison.
 jepsen_voldemort.py - no jepsen clojure test available.
+jepsen_dynamodb.py - also no jepsen clojure test. 
+                     Works with external dynamodb instance.
+                     Requires access keys to be set as environment
+                     variables. In ~/.bashrc:
+
+                     export aws_access_key_id=<AWS ID>
+                     export aws_secret_access_key=<AWS SECRET>
+
 
 
 YCSB LATENCY TESTING FRAMEWORK:

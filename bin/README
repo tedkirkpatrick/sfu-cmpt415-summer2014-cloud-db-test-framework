@@ -36,8 +36,22 @@ startjepsen.py - start jepsen tests for a given server. Unlike speed_all.sh,
                  killall python
                  fg
 
+PROCESSING TEST RESULTS:
+
+CSV output suitable for use in excel can be generated from any test.
+The parse_speed.pl script can extract test info and stats from the 
+jepsen and speed test outputs. Multiple files can be used as input.
+First run the test and collect the output into a file. For example:
+
+bash> bin/jepsen_run_dynamodb.py overwrite 2>&1 | tee public_html/results/20140812/jepsen_dynamo_overwrite.txt
+...
+bash> bin/parse_speed.pl public_html/results/20140812/jepsen_dynamo_overwrite.txt > public_html/results/20140812/jepsen_dynamo_overwrite.csv
+
 MISC:
 
-test - some python cloud db test scripts
+test - directory that contains some python cloud db test scripts
 parse_speed.pl - used with the output of lib/speed.py to generate spreadsheet data
 partition.sh - (not used) iptables script to partition lxc containers
+jepsen_run_dynamodb.py - test an external amazon dynamodb instance see also lib/jepsen_dyanmodb.py
+
+
