@@ -12,6 +12,7 @@ import results
 
 keyspace = 'jepsen'
 initsleep = 2
+maxtries = 40
 
 # used by Jepsen to validate tests that can be run
 # these vary depending on the storage technology
@@ -54,7 +55,7 @@ def prep_session(jep, canonical, createtb=None, createks=None):
 	doing this here as it may be the case that we don't need / want a setup step 
 	for some test suites
 	"""
-	global initsleep, keyspace
+	global initsleep, maxtries, keyspace
 
 	if 'port' in jep.props:
 		cluster = Cluster([jep.host+':'+str(jep.props['port'])])
@@ -65,41 +66,38 @@ def prep_session(jep, canonical, createtb=None, createks=None):
 		# from cql3 as reported on http://stackoverflow.com/questions/9656371/cql-how-to-check-if-keyspace-exists
 		createks = "CREATE KEYSPACE IF NOT EXISTS %s WITH replication = {'class':'SimpleStrategy', 'replication_factor':3}" % keyspace
 	if createtb == None:
-		createtb = 'CREATE TABLE %s (id int PRIMARY KEY, stuff varchar)' % canonical
+		createtb = 'CREATE TABLE IF NOT EXISTS %s (id int PRIMARY KEY, stuff varchar)' % canonical
 
 	# only allow one host to do this setup step? doesn't seem to work well with cassandra
 	print "%s setting up keyspace.table %s" % (jep.host, canonical)
 	session.execute(createks)
 	# make sure keyspace exists on this host
 	tries = 0
-	while tries < 100:
+	while tries < maxtries:
 		time.sleep(initsleep)
 		rows = session.execute("SELECT keyspace_name FROM system.schema_keyspaces")
 		for row in rows:
 			if row.keyspace_name == keyspace: 
-				tries = 11
+				tries = maxtries + 1
 				break
 		tries = tries + 1
 		
 	session.execute('USE %s' % keyspace)
 	try:
-		session.execute('DROP TABLE %s' % canonical)
-	except:
-		print jep.host+": no table %s" % canonical
-	try:
 		# this can fail if the table already exists
+		print createtb
 		session.execute(createtb)
 	except Exception as e:
 		print jep.host+": "+str(e)	
 
 	# make sure table exists on this host
 	tries = 0
-	while tries < 100:
+	while tries < maxtries:
 		time.sleep(initsleep)
 		rows = session.execute("SELECT keyspace_name,columnfamily_name FROM system.schema_columnfamilies")
 		for row in rows:
 			if row.keyspace_name+'.'+row.columnfamily_name == canonical:
-				tries = 11
+				tries = maxtries + 1
 				break
 		tries = tries + 1
 
@@ -126,6 +124,20 @@ def isonemore(event):
 	f = event.found[0]
 	v = event.value[0]
 	if int(v.k)+1 != int(f.k):
+		event.resultmsg =  "event "+str(event.idx)+" failed."
+		event.result = False
+	else:
+		event.resultmsg = "event "+str(event.idx)+" ok."
+		event.result = True
+
+def ismore(event):
+	if event.found == None:
+		event.resultmsg = "event "+str(event.idx)+" empty."
+		event.result = False
+		return
+	f = event.found[0]
+	v = event.value[0]
+	if int(v.k) >= int(f.k):
 		event.resultmsg =  "event "+str(event.idx)+" failed."
 		event.result = False
 	else:
@@ -208,11 +220,18 @@ def basic(jep):
 			ins = SimpleStatement( instr, consistency_level=ConsistencyLevel.QUORUM)
 			session.execute(ins)
 			history.update(idx, {'end': nanotime.now()})
+		except Exception as e:
+			print jep.host+" write "+str(nanotime.now())+": "+str(e)
+			history.update(idx, {'error': str(e)})
+			
+		try:
 			rows = session.execute(sel)
 			history.update(idx, {'found': rows, 'rawtime': nanotime.now()})
 			history.printEvt(idx)
 		except Exception as e:
-			print jep.host+" "+str(nanotime.now())+": "+str(e)
+			print jep.host+" read "+str(nanotime.now())+": "+str(e)
+			history.update(idx, {'raw error': str(e)})
+
 		jep.pause()
 
 def counter(jep):
@@ -222,7 +241,7 @@ def counter(jep):
 	"""
 	print "starting counter test for "+jep.host
 	canonical = tbname('counter_app')
-	createtb = 'CREATE TABLE %s (id int PRIMARY KEY, k counter)' % canonical
+	createtb = 'CREATE TABLE IF NOT EXISTS %s (id int PRIMARY KEY, k counter)' % canonical
 	session = prep_session(jep, canonical, createtb)
 
 	sel = SimpleStatement(
@@ -232,7 +251,8 @@ def counter(jep):
 	updstr = "UPDATE %s SET k = k + 1 WHERE id=0" % canonical
 	upd = SimpleStatement(updstr, consistency_level=ConsistencyLevel.ONE)
 	ipt = iptables.Iptables(jep.host, jep)
-	jep.history.set_checker(getattr(jep.mod, 'isonemore'))
+	# jep.history.set_checker(getattr(jep.mod, 'isonemore'))
+	jep.history.set_checker(getattr(jep.mod, 'ismore'))
 
 	i = 0
 	while i < jep.props['count']:
@@ -240,16 +260,22 @@ def counter(jep):
 		try:
 			value = session.execute(sel)
 			idx = jep.history.add(jep.host, 0, value, ipt.isblocked())
-
-			print jep.host+": "+updstr
-			session.execute(upd)
-			jep.history.update(idx, {'end': nanotime.now()})
-
-			rows = session.execute(sel)
-			jep.history.update(idx, {'found': rows, 'rawtime': nanotime.now()})
-			jep.history.printEvt(idx)
+			try:
+				print jep.host+": "+updstr
+				session.execute(upd)
+				jep.history.update(idx, {'end': nanotime.now()})
+			except Exception as e:
+				print jep.host+" write "+str(nanotime.now())+": "+str(e)
+				jep.history.update(idx, {'error': str(e)})
+			try:
+				rows = session.execute(sel)
+				jep.history.update(idx, {'found': rows, 'rawtime': nanotime.now()})
+				jep.history.printEvt(idx)
+			except Exception as e:
+				print jep.host+" read "+str(nanotime.now())+": "+str(e)
+				jep.history.update(idx, {'rawerror': str(e)})
 		except Exception as e:
-			print jep.host+" "+str(nanotime.now())+": "+str(e)
+			print jep.host+" error getting value: "+str(e)
 		jep.pause()
 		i = i + 1
 	
@@ -260,7 +286,7 @@ def set(jep):
 	"""
 	print "starting set test for "+jep.host
 	canonical = tbname('set_app')
-	createtb = 'CREATE TABLE %s (id int PRIMARY KEY, s set<varchar>)' % canonical
+	createtb = 'CREATE TABLE IF NOT EXISTS %s (id int PRIMARY KEY, s set<varchar>)' % canonical
 	session = prep_session(jep, canonical, createtb)
 
 	sel = SimpleStatement(
@@ -274,14 +300,18 @@ def set(jep):
 	i = 0
 	while i < jep.props['count']:
 		blocked = ipt.split_unsplit_all(i, jep)
+		value = jep.host+" "+str(i)
+		idx = jep.history.add(jep.host, 0, value, ipt.isblocked())
 		try:
-			value = jep.host+" "+str(i)
-			idx = jep.history.add(jep.host, 0, value, ipt.isblocked())
 			updstr = "UPDATE %s SET s = s + {'%s'}  WHERE id=0" % (canonical, value)
 			print jep.host+": "+updstr
 			upd = SimpleStatement(updstr, consistency_level=ConsistencyLevel.ANY)
 			session.execute(upd)
 			jep.history.update(idx, {'end': nanotime.now()})
+		except Exception as e:
+			print jep.host+" write "+str(nanotime.now())+": "+str(e)
+			jep.history.update(idx, {'error': str(e)})
+		try:
 
 			rows = session.execute(sel)
 			for row in rows:
@@ -290,7 +320,8 @@ def set(jep):
 			jep.history.printEvt(idx)
 			
 		except Exception as e:
-			print jep.host+" "+str(nanotime.now())+": "+str(e)
+			print jep.host+" read "+str(nanotime.now())+": "+str(e)
+			jep.history.update(idx, {'rawerror': str(e)})
 		jep.pause()
 		i = i + 1
 
@@ -309,7 +340,7 @@ def isolation(jep):
  	"""
 	print "starting test isolation for "+jep.host
 	canonical = tbname('iso_app')
-	createtb = 'CREATE TABLE %s (id varchar PRIMARY KEY, a int, b int)' % canonical
+	createtb = 'CREATE TABLE IF NOT EXISTS %s (id varchar PRIMARY KEY, a int, b int)' % canonical
 	session = prep_session(jep, canonical, createtb)
 
 	# math operators don't work and you need to manually add an index to use a = 1 etc.
@@ -325,11 +356,12 @@ def isolation(jep):
 	writes = {}
 	while i < jep.props['count']:
 		blocked = ipt.split_unsplit_all(i, jep)
+		key = str(i)
+		idx = jep.history.add(jep.host, key, (key,value,-value), ipt.isblocked())
 		try:
-			key = str(i)
 			writes[key] = True
 			time.sleep(random.randint(0,200)/1e3)
-			idx = jep.history.add(jep.host, key, (key,value,-value), ipt.isblocked())
+			jep.history.update(idx, {"start": nanotime.now()})
 			"""
                        ; If you force timestamp collisions instead of letting
                        ; them happen naturally, you can reliably cause
@@ -345,6 +377,10 @@ def isolation(jep):
 				session.execute(ins)
 				jep.history.update(idx, {'end': nanotime.now(), 'notes': "%scount %d"% (ipt.isblocked(), c+1)})
 
+		except Exception as e:
+			print jep.host+" write "+str(nanotime.now())+": "+str(e)
+			jep.history.update(idx, {'error': str(e)})
+		try:
 			# we want to find anything left over from this select as that is an error
 			# if everything went well then the result set should be empty
 			rows = session.execute(sel)
@@ -356,7 +392,8 @@ def isolation(jep):
 			jep.history.printEvt(idx)
 			
 		except Exception as e:
-			print jep.host+" "+str(nanotime.now())+": "+"ERROR: "+str(e)
+			print jep.host+" read "+str(i)+" "+str(nanotime.now())+": "+"ERROR: "+str(e)
+			jep.history.update(idx, {'rawerror': str(e)})
 		jep.pause()
 		i = i + 1
 
@@ -406,11 +443,16 @@ def transaction(jep):
 				tries = tries + 1
 
 			history.update(idx, {'end': nanotime.now()})
+		except Exception as e:
+			print jep.host+" write "+str(nanotime.now())+": "+str(e)
+			history.update(idx, {'error': str(e)})
+		try:
 			rows = session.execute(sel)
 			history.update(idx, {'found': rows, 'rawtime': nanotime.now()})
 			history.printEvt(idx)
 		except Exception as e:
-			print jep.host+" "+str(nanotime.now())+": "+str(e)
+			print jep.host+" read "+str(i)+" "+str(nanotime.now())+": "+str(e)
+			history.update(idx, {'rawerror': str(e)})
 		jep.pause()
 		i = i + 1
 
@@ -427,7 +469,7 @@ def transaction_dup(jep):
 	history = jep.history
 	print "start transaction duplicate detection (transaction_dup) test on "+host
 	canonical = tbname('transaction_dup')
-	createtb = "CREATE TABLE %s (id varchar PRIMARY KEY, consumed boolean)" % canonical
+	createtb = "CREATE TABLE IF NOT EXISTS %s (id varchar PRIMARY KEY, consumed boolean)" % canonical
 	session = prep_session(jep, canonical, createtb)
 	ipt = iptables.Iptables(host, jep)
 	jep.history.set_checker(getattr(jep.mod, 'isempty'))
@@ -460,6 +502,10 @@ def transaction_dup(jep):
 				pass
 
 			history.update(idx, {'end': nanotime.now()})
+		except Exception as e:
+			print jep.host+" write "+str(nanotime.now())+": "+str(e)
+			history.update(idx, {'error': str(e)})
+		try:
 			rows = session.execute(sel)
 			found = []
 			for row in rows:
@@ -470,6 +516,7 @@ def transaction_dup(jep):
 
 		except Exception as e:
 			print jep.host+" "+str(nanotime.now())+": "+str(e)
+			history.update(idx, {'rawerror': str(e)})
 		jep.pause()
 		i = i + 1
 

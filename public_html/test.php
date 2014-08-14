@@ -2,6 +2,7 @@
 $arg = $_GET['test'];
 $title = $arg." jepsen tests";
 $heading = $title;
+if (file_exists("results/TESTING")) $testing = "test in progress";
 
 print <<<HTML
 <!DOCTYPE html>
@@ -64,7 +65,7 @@ function upd_status(test) {
 	return false;
    "
 >clear TESTING lock file</a>
-<span id="testing"></span>
+<span id="testing">$testing</span>
 
 <h3>$heading</h3>
 Server log: <a id="serverout" href="" target="_blank"></a>

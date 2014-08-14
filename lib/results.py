@@ -166,8 +166,10 @@ class JepsenEvent:
 	# times
 	start = 0
 	end = 0
+	error = None
 	# time after read after write
 	rawtime = 0
+	rawerror = None
 	key = None 
 	value = None # written value
 	found = None # read after write value
@@ -224,10 +226,12 @@ class JepsenEvent:
 			elif prop == "notes": self.notes = value
 			elif prop == "start": self.start = value
 			elif prop == "end": self.end = value
+			elif prop == "error": self.error = value
 			elif prop == "key": self.key = value
 			elif prop == "value": self.value = value
 			elif prop == "found": self.found = value
 			elif prop == "rawtime": self.rawtime = value
+			elif prop == "rawerror": self.rawerror = value
 			elif prop == "resultmsg": self.resultmsg = value
 			elif prop == "result": self.result = value
 
@@ -240,6 +244,8 @@ class JepsenEvent:
 			str(self.key)+" = '"+str(self.value)+"' ('"+str(self.found)+"') "+\
 			str(self.elapsed())+"ns ("+str(self.rawelapsed())+"ns) "+\
 			self.successStr()+" "+str(self.notes)+" "+self.resultmsg
+		if self.error != None or self.rawerror != None:
+			s = s + " Errors: " + str(self.error) + " ("+str(self.rawerror)+") "
 		return s
 		
 
