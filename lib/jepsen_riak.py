@@ -1,6 +1,7 @@
 import riak
 import nanotime
 import time
+import re
 import iptables
 import results
 
@@ -20,7 +21,9 @@ _id = "jepsen"
 def resolver(fetched):
 	# this doesn't seem to return a single value:
 	# print max(fetched.siblings, lambda x: x.last_modified)
+	global _id
 	latest = None
+	# print "resolver found siblings ",fetched.siblings
 	for s in fetched.siblings:
 		if latest == None or latest.last_modified < s.last_modified:
 			latest = s
@@ -30,18 +33,26 @@ def resolver(fetched):
 def setup(jep):
 	pass
 
-def prep_conn(jep):
-	global testprops
+def get_port(jep):
 	if 'port' in jep.props:
 		port = jep.props['port']
 	else: 
 		port = 8087
+	return port
+
+def prep_conn(jep):
+	"""
+	create a connection for doing actual tests
+	"""
+	global testprops
+	port = get_port(jep)
 	print "connecting to "+jep.host+" on port "+str(port)
 	client = riak.RiakClient(host=jep.host, pb_port=port, protocol='pbc')
 	client.resolver = resolver
 
 	# properties for a bucket should be set once
-	bucket = client.bucket('jepsen_'+jep.test)
+	bname = 'jepsen_'+jep.test
+	bucket = client.bucket(bname)
 
 	if jep.test not in testprops:
 		props = testprops['basic']
@@ -59,6 +70,20 @@ def prep_conn(jep):
 	# time.sleep(initwait)
 	return bucket
 
+def connect_all(jep):
+	"""
+	connect to all hosts so we can monitor what is on them during the test
+	"""
+	port = get_port(jep)
+	bname = 'jepsen_'+jep.test
+	clients = []
+	buckets = []
+	for h in jep.hosts:
+		clients.append(riak.RiakClient(host=jep.host, pb_port=port, protocol='pbc'))
+	for c in clients:
+		buckets.append(c.bucket(bname))
+	return buckets
+		
 def cleanup(jep):
 	pass
 
@@ -92,12 +117,14 @@ def basic(jep):
 	ipt = iptables.Iptables(jep.host, jep)
 	jep.history.set_checker(getattr(jep.mod, 'same'))
 
+	comp = []
 	i = 0
 	while i < jep.props['count']:
-		blocked = ipt.split_unsplit_all(i, jep)
+		blocked = ipt.split_unsplit_all(i, jep, jep.props['partition_wait'])
 		try:
 			value = jep.host+" "+str(i)
 			idx = jep.history.add(jep.host, _id, value, ipt.isblocked())
+			# temporary just write to n1 and see if other hosts get data
 			fetched.data = value
 			fetched.store()
 			jep.history.update(idx, {'end': nanotime.now()})

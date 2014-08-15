@@ -23,7 +23,10 @@ if re.match("cassandra|riak|mongo|voldemort", sys.argv[1]):
 		f = file(TESTING,"w")
 	finally:
 		f.close()
-	j = Jepsen(sys.argv[1],test,{'excludeall':excludeall,'wait': 1000,'count': 40})
+	# for longerdelay riak tests - only riak uses partition_wait at the moment
+	# j = Jepsen(sys.argv[1],test,{'excludeall':excludeall,'wait': 1000,'count': 100, 'partition_wait': 0.1})
+	# normal test settings 
+	j = Jepsen(sys.argv[1],test,{'excludeall':excludeall,'wait': 1000,'count': 40, 'partition_wait': 0.33})
 	if test == None:
 		j.start_all()
 	os.remove(TESTING)
