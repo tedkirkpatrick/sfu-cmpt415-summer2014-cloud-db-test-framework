@@ -49,6 +49,7 @@ def same(event):
 def basic(jep):
 	global table, tb_name, key
 	# how do we handle conflicts?
+	# false = raise an exception if a record is overwritten before a write commits
 	if 'overwrite' in jep.props:
 		overwrite = jep.props['overwrite']
 	else:
