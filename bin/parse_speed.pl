@@ -9,6 +9,7 @@ my ($lib, $test, $oldtest, $data, %seen);
 
 while (<>) {
 	chomp;
+	RUNNING:
 	if (/^running (\w+) (\w+)/) {
 		($lib, $test) = ($1,$2);
 		my $testtest = "$test $ARGV";
@@ -19,31 +20,30 @@ while (<>) {
 		}
 		$test = $testtest;
 		$seen{$lib}{$test} = 1;
-		my ($decoded_stats, $decoded_histograms);
-		do {
-			my ($stats, $histograms) = &getlines();
-			# just ignore lines in the file that aren't json
-			eval {
-				$decoded_stats = decode_json($stats);
-				$decoded_histograms = decode_json($histograms);
-				# print "lib $lib\ntest $test\nstats $stats\nhistograms $histograms\n";
-			}
-		} while $@;
-		$data->{stats}{$test}{$lib} = $decoded_stats;
-		$data->{histograms}{$test}{$lib} = $decoded_histograms;
+		$_ = &getlines();
+		goto RUNNING if not eof;
 	} 
+	# will stall at the <> forever if we don't check here
+	last if eof;
 }
 
 sub getlines {
-	my $stats = <>;
-	my $histograms = <>;
-	chomp $stats;
-	chomp $histograms;
-	$stats =~ s/'/"/g;
-	$histograms =~ s/'/"/g;
-	$stats =~ s/(\d+):/"$1":/g;
-	$histograms =~ s/(\d+):/"$1":/g;
-	($stats, $histograms);
+	while (my $line = <>) {
+		chomp $line;
+		if ($line =~ /^running (\w+) (\w+)/) {
+			return $line;
+		}
+		my $pat = qr/^\s*{\s*['"](reads|writes|unknown)['"].*}/;
+		if ($line =~ $pat) {
+			my $statstype = ($1 eq 'reads' ? 'stats':'histograms');
+			$line =~ s/'/"/g;
+			$line =~ s/(\d+):/"$1":/g;
+			my $decoded = decode_json($line);
+			if (defined $decoded) {
+				$data->{$statstype}{$test}{$lib} = $decoded;
+			}
+		}
+	}
 }
 
 print "stats\n";
