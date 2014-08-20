@@ -8,9 +8,8 @@ def setup(st):
 	global conn, cur
 	host = os.environ['MYHOST']
 	user = os.environ['MYUSER']
-	pass = os.environ['MYPASSWD']
-	
-	conn = mdb.connect(host, user, pass, 'speedtest')
+	password = os.environ['MYPASSWD']
+	conn = mdb.connect(host, user, password, 'speedtest')
 	if not conn: raise Exception("Can't start up mysql!")
 	cur = conn.cursor()
 
