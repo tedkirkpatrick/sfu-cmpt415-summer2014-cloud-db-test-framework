@@ -112,7 +112,7 @@ speed_hbase.py
 speed_mongo.py
 speed_mysql.py - mysql is only live on cloudsmall1, used as benchmark.
                  If you can beat this you are very fast. This also
-                 also uses two environment variables defined in ~/.bashrc:
+                 uses environment variables defined in ~/.bashrc:
 
                  export MYUSER=<mysql user name>
                  export MYPASSWD=<mysql password>
