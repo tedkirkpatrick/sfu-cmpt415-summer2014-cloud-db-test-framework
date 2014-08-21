@@ -19,6 +19,9 @@ Cassandra on the external hosts is much too slow for building up or
 tearing down keyspaces and tables so this code is all commented out 
 for now. It does work for the locally hosted jepsen tests.
 
+ENVIRONMENT VARIABLES:
+
+Some libraries use environment variables (see below for details).
 To use jepsen or speed make sure PYTHONPATH points to their location.
 
 JEPSEN NETWORK PARTIONING TEST FRAMEWORK:
@@ -108,7 +111,15 @@ speed_cassandra.py - code to create keyspace/table commented out
 speed_hbase.py
 speed_mongo.py
 speed_mysql.py - mysql is only live on cloudsmall1, used as benchmark.
-                 If you can beat this you are very fast.
+                 If you can beat this you are very fast. This also
+                 also uses two environment variables defined in ~/.bashrc:
+
+                 export MYUSER=<mysql user name>
+                 export MYPASSWD=<mysql password>
+                 export MYHOST=<ip of mysql host to connect to>
+                 
+                 # this assumes that mysql is using port 3306 to connect
+
 speed_riak.py
 speed_voldemort.py - voldemort is configured externally
 
